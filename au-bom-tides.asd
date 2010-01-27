@@ -14,10 +14,10 @@
   :author ""
   :licence ""
   :description "Tides from bom.gov.au"
-  :depends-on (:hunchentoot :cl-utilities :fiveam :anaphora :cl-fad)
+  :depends-on ( :cl-html-parse ) ; :hunchentoot :cl-utilities :fiveam :anaphora :cl-fad)
   :components ((:file "packages")
 	       (:file "au-bom-tides"
-		      :depends-on ("packages"))
-	       (:module test
-			:components ((:file "test"))
-			:depends-on ("au-bom-tides"))))
+		      :depends-on ("packages"))))
+	       ;; (:module test
+	       ;; 		:components ((:file "test"))
+	       ;; 		:depends-on ("au-bom-tides"))))

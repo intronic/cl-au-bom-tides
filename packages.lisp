@@ -3,9 +3,11 @@
 
 (defpackage :au-bom-tides
   (:use :cl 
-	:iterate
-	:fiveam
-	:anaphora
-	:cl-fad)
+	:cl-html-parse
+	;; :iterate
+	;; :fiveam
+	;; :anaphora
+	;; :cl-fad)
+	)
   (:documentation
    "Genospatial data and algorithms."))
