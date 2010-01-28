@@ -3,7 +3,7 @@
 
 (defpackage :au-bom-tides
   (:use :cl 
-	:cl-html-parse
+	:net.html.parser
 	;; :iterate
 	;; :fiveam
 	;; :anaphora
