@@ -14,7 +14,7 @@
   :author ""
   :licence ""
   :description "Tides from bom.gov.au"
-  :depends-on ( :cl-html-parse ) ; :hunchentoot :cl-utilities :fiveam :anaphora :cl-fad)
+  :depends-on (:closure-html :drakma :cl-uri-templates)
   :components ((:file "packages")
 	       (:file "au-bom-tides"
 		      :depends-on ("packages"))))
