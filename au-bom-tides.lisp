@@ -65,8 +65,8 @@
 	      (or (rec-find-if predicate (first tree))
 		  (rec-find-if predicate (rest tree)))))))
 
-(defun node-equal-p (x node)
-  (if (and (consp node) (eql (car node) x))
+(defun node-equal-p (x node &key (test #'eq))
+  (if (and (consp node) (funcall test (car node) x))
       node))
 
 (defun find-node (type tree)
@@ -77,13 +77,12 @@
 
 (defun find-tide-location (page)
   (rec-find-if #'(lambda (x) 
-		   (if (and (consp x)
-			    (eq (first x) :table) ; table node
-			    (eq (first (third x)) :tbody) ; with tbody
-			    (eq (first (third (third x))) :tr)
-			    (eq (first (third (third (third x)))) :td)
-			    (eq (first (fourth (third (third (third x))))) :h4)
-			    (string= (third (fourth (third (third (third x))))) 
+		   (if (and (node-equal-p :table x) ; table node
+			    (node-equal-p :tbody (third x)) ; with tbody
+			    (node-equal-p :tr (third (third x))) ; and row
+			    (node-equal-p :td (third (third (third x)))) ; cell
+			    (node-equal-p :h4 (fourth (third (third (third x)))))
+			    (string= (third (fourth (third (third (third x)))))
 				     "TIDE PREDICTIONS FOR " 
 				     :end1 (length "TIDE PREDICTIONS FOR ")))
 		       (fourth (third (third (third x))))))
@@ -93,10 +92,9 @@
   
 (defun find-tide-table (page)
   (rec-find-if #'(lambda (x) 
-		   (if (and (consp x)
-			    (eq (first x) :table) ; table node
+		   (if (and (node-equal-p :table x) ; table node
 			    (eql 3 (length x))
-			    (eq (first (third x)) :tbody) ; with tbody
+			    (node-equal-p :tbody (third x)) ; with tbody
 			    (>= (length (third x)) (+ 2 5)) ; 2 header & 5+ data rows
 					; (fourth (third x)) is second header row 
 					; with "Time" & "Ht" labels 
@@ -109,19 +107,26 @@
 		       x))
 	       page))
 
-(defun date-matches-p (header-row query-date)
+(defun date-matches (header-row query-date)
   "Ensure the date in the header row matches the date in the query."
   (equal (parse-integer (third (third (third header-row)))
 			:start 3 :junk-allowed t)
 	 query-date))
 
 (defun validate-tide-table (page date)
-  (let* ((table (find-tide-table page))
-	 (tbody (cddr (third table)))
-	 (data (cddr tbody)))
-    (declare (ignore data))
-    (date-matches-p (first tbody) date)
+  (let ((table (find-tide-table page)))
+    (unless (date-matches (tide-table-tbody table) date)
+      (error "Dates in tide table dont match query date ~s~%" 
+	     (tide-table-tbody table)))
     table))
+
+(defun tide-table-tbody (table)
+  "Get the table tbody from the table"
+  (cddr (third table)))
+
+(defun tide-table-data (table)
+  "Get the table data rows from the table"
+  (cddr (tide-table-tbody table)))
 
 (defun munge-tide-data (page date)
   "Add the location to the table so users can be sure they are looking at what they expect, in case the codes for locations change."
@@ -139,4 +144,7 @@
     (serialize-lhtml (munge-tide-data (parse (http-request uri) 
 					     (make-lhtml-builder)) day)
 		     (make-character-stream-sink stream))))
+ 
+(defun test (path)
+  (find-tide-table (parse path (make-lhtml-builder))))
  
