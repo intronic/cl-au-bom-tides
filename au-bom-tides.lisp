@@ -2,6 +2,8 @@
 
 ;;;; http://www.bom.gov.au/cgi-bin/oceanography/tides/tide_predications.cgi?location=qld_59980&Submit.x=63&Submit.y=4&tide_hiddenField=Queensland&years=2010&months=Jan&dates=31
 
+(defvar *months* '(nil "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
+
 (defvar *standard-ports* 
   '(("nsw_60130" "Yamba")
     ("qld_59300" "Abbot Point") 
@@ -37,6 +39,9 @@
     ("qld_59840" "Waddy Point" "(Fraser Island)") 
     ("qld_63620" "Weipa" "(Humbug Point)")))
 
+(defun month-name (month)
+  (nth month *months*))
+
 (defun standard-port (name)
   (rassoc name *standard-ports* 
 	  :test (lambda (name port) 
@@ -70,6 +75,22 @@
 	  (find-node type (first tree))
 	  (find-node type (rest tree)))))
 
+(defun find-tide-location (page)
+  (rec-find-if #'(lambda (x) 
+		   (if (and (consp x)
+			    (eq (first x) :table) ; table node
+			    (eq (first (third x)) :tbody) ; with tbody
+			    (eq (first (third (third x))) :tr)
+			    (eq (first (third (third (third x)))) :td)
+			    (eq (first (fourth (third (third (third x))))) :h4)
+			    (string= (third (fourth (third (third (third x))))) 
+				     "TIDE PREDICTIONS FOR " 
+				     :end1 (length "TIDE PREDICTIONS FOR ")))
+		       (fourth (third (third (third x))))))
+	       page))
+
+
+  
 (defun find-tide-table (page)
   (rec-find-if #'(lambda (x) 
 		   (if (and (consp x)
@@ -80,13 +101,14 @@
 					; (fourth (third x)) is second header row 
 					; with "Time" & "Ht" labels 
 					; and expect 14 columns in the row
-			    (= (length (fourth (third x))) (+ 2 14)) ;
+			    (= (length (fourth (third x))) (+ 2 14))
 			    (equal (third (third (fourth (third x))))
 				   "Time")
 			    (equal (third (fourth (fourth (third x))))
 				   "Ht"))
-		       x)) page))
-		      		      
+		       x))
+	       page))
+
 (defun date-matches-p (header-row query-date)
   "Ensure the date in the header row matches the date in the query."
   (equal (parse-integer (third (third (third header-row)))
@@ -101,13 +123,20 @@
     (date-matches-p (first tbody) date)
     table))
 
+(defun munge-tide-data (page date)
+  "Add the location to the table so users can be sure they are looking at what they expect, in case the codes for locations change."
+  (let ((loc (find-tide-location page))
+	(tab (validate-tide-table page date)))
+    `(:div nil ,loc ,tab)))
+
 (defun html-tide-table-to-stream (port-name year month day stream)
-  "Get html table for tides for the location for 7 days from the year, month, and day, and write it to the stream. Port name is the name of the port, for example Brisbane Bar, Yamba, Urangan (see http://www.bom.gov.au/oceanography/tides/MAPS/qld.shtml). Year is a four-digit integer. Month is a 3-character string such as Jan or Feb. Day is an integer from 1 to 31."
+  "Get html table for tides for the location for 7 days from the year, month, and day, and write it to the stream. Port name is the name of the port, for example Brisbane Bar, Yamba, Urangan (see http://www.bom.gov.au/oceanography/tides/MAPS/qld.shtml). Year is a four-digit integer. Month is an integer from 1 to 12. Day is an integer from 1 to 31."
   (let* ((port (standard-port port-name))
 	 (port-code (first port))
 	 (port-state (standard-port-state port))
-	 (uri (expand-uri-template "http://www.bom.gov.au/cgi-bin/oceanography/tides/tide_predications.cgi?location={port-code}&Submit.x=63&Submit.y=4&tide_hiddenField={port-state}&years={year}&months={month}&dates={day}")))
-    (serialize-lhtml (validate-tide-table (parse (http-request uri) 
-						 (make-lhtml-builder)) day)
+	 (month-name (month-name month))
+	 (uri (expand-uri-template "http://www.bom.gov.au/cgi-bin/oceanography/tides/tide_predications.cgi?location={port-code}&Submit.x=63&Submit.y=4&tide_hiddenField={port-state}&years={year}&months={month-name}&dates={day}")))
+    (serialize-lhtml (munge-tide-data (parse (http-request uri) 
+					     (make-lhtml-builder)) day)
 		     (make-character-stream-sink stream))))
  
