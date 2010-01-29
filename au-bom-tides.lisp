@@ -2,8 +2,6 @@
 
 ;;;; http://www.bom.gov.au/cgi-bin/oceanography/tides/tide_predications.cgi?location=qld_59980&Submit.x=63&Submit.y=4&tide_hiddenField=Queensland&years=2010&months=Jan&dates=31
 
-(defvar *months* '(nil "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
-
 (defvar *standard-ports* 
   '(("nsw_60130" "Yamba")
     ("qld_59300" "Abbot Point") 
@@ -39,9 +37,6 @@
     ("qld_59840" "Waddy Point" "(Fraser Island)") 
     ("qld_63620" "Weipa" "(Humbug Point)")))
 
-(defun month-name (month)
-  (nth month *months*))
-
 (defun standard-port (name)
   (rassoc name *standard-ports* 
 	  :test (lambda (name port) 
@@ -56,6 +51,14 @@
      "Queensland")
     ((string= "nsw" (first port) :end2 3)
      "New+South+Wales")))
+
+(defun parse-decimal (str)
+  (let* ((parts (split-sequence #\. str))
+         (a (car parts))
+         (b (cadr parts))
+         (a1 (parse-integer a))
+         (b1 (or (parse-integer (or b "0") :junk-allowed t) 0)))
+    (+ a1 (/ b1 (expt 10 (length b))))))
 
 (defun rec-find-if (predicate tree)
   (if (null tree)
@@ -88,8 +91,6 @@
 		       (fourth (third (third (third x))))))
 	       page))
 
-
-  
 (defun find-tide-table (page)
   (rec-find-if #'(lambda (x) 
 		   (if (and (node-equal-p :table x) ; table node
@@ -128,6 +129,40 @@
   "Get the table data rows from the table"
   (cddr (tide-table-tbody table)))
 
+(defun row-columns (row)
+  (cddr row))
+
+(defun parse-number-or-null (string)
+  (if string (parse-decimal string)))
+
+(defun high-or-low (col)
+  (let ((color (second (first (second (third (second col))))))
+	(height (third (third (second col)))))
+    (cond 
+      ((string= color "red") (values (parse-number-or-null 
+				      (trim-whitespace-to-null (third height))) 
+				     :low))
+      ((string= color "blue") (values (parse-number-or-null
+				       (trim-whitespace-to-null height))
+				      :high)))))
+
+(defun tide-time (col)
+  (trim-whitespace-to-null (third (first col))))
+
+(defun trim-whitespace (s)
+  (string-trim '(#\Space #\Tab #\Newline #\NO-BREAK_SPACE) s))
+
+(defun trim-whitespace-to-null (s)
+  (let ((trim (trim-whitespace s)))
+    (if (plusp (length trim))
+	trim)))
+
+(defun hhmm->mm (time)
+  (parse-integer time :start 2 :end 4))
+
+(defun hhmm->hh (time)
+  (parse-integer time :start 0 :end 2))
+
 (defun munge-tide-data (page date)
   "Add the location to the table so users can be sure they are looking at what they expect, in case the codes for locations change."
   (let ((loc (find-tide-location page))
@@ -143,8 +178,47 @@
 	 (uri (expand-uri-template "http://www.bom.gov.au/cgi-bin/oceanography/tides/tide_predications.cgi?location={port-code}&Submit.x=63&Submit.y=4&tide_hiddenField={port-state}&years={year}&months={month-name}&dates={day}")))
     (serialize-lhtml (munge-tide-data (parse (http-request uri) 
 					     (make-lhtml-builder)) day)
-		     (make-character-stream-sink stream))))
+		     (make-character-stream-sink stream)))) 
+
+(defun parse-columns (year month days cols)
+  (labels ((parse-column (col year month day)
+	     (let* ((time-string (tide-time col))
+		    (time (if time-string
+			      (encode-universal-time 0 
+						     (hhmm->mm time-string)
+						     (hhmm->hh time-string)
+						     day month year))))
+	       (multiple-value-bind (height low-high)
+		   (high-or-low col)
+		 (list time
+		       (if time (encoded-timestring time))
+		       (if time (encoded-day time))
+		       low-high (if height (coerce height 'single-float)) 
+		       height))))
+	   (parse-acc (cols year month days prev-day)
+	     (if (null cols)
+		 nil
+		 (let* ((day (first days))
+			(next-day-p (< day prev-day))
+			(new-month (if next-day-p (1+ (mod month 12)) month))
+			(new-year (if (and next-day-p (= 1 new-month)) (1+ year) year)))
+		   (cons (parse-column cols new-year new-month day)
+			 (parse-acc (cddr cols) new-year new-month (cdr days) day))))))
+    (parse-acc cols year month days (first days))))
+
+(let ((year 2010) (month 1) (days '(31 1 2 3 4 5 6)))
+  (defun parse-rows (rows)
+    (remove-if (complement #'first)
+	       (if (null rows)
+		   nil
+		   (append (parse-columns year month days 
+					  (row-columns (car rows)))
+			   (parse-rows (cdr rows)))))))
+
+(defun test (path year month day)
+  (declare (ignore year month day))
+  (let ((table (find-tide-table (parse path (make-lhtml-builder)))))
+    (mapcar #'parse-row table)))
  
-(defun test (path)
-  (find-tide-table (parse path (make-lhtml-builder))))
- 
+;; (defun remove-blanks (columns)
+;;   (do ((col (

@@ -6,6 +6,7 @@
 	:closure-html
 	:drakma
 	:cl-uri-templates
+	:split-sequence
 	)
   (:documentation
    "Genospatial data and algorithms."))

@@ -14,10 +14,12 @@
   :author ""
   :licence ""
   :description "Tides from bom.gov.au"
-  :depends-on (:closure-html :drakma :cl-uri-templates)
+  :depends-on (:closure-html :drakma :cl-uri-templates :split-sequence)
   :components ((:file "packages")
+	       (:file "date-time"
+		      :depends-on ("packages"))
 	       (:file "au-bom-tides"
-		      :depends-on ("packages"))))
+		      :depends-on ("date-time" "packages"))))
 	       ;; (:module test
 	       ;; 		:components ((:file "test"))
 	       ;; 		:depends-on ("au-bom-tides"))))
