@@ -14,7 +14,7 @@
   :author ""
   :licence ""
   :description "Tides from bom.gov.au"
-  :depends-on (:closure-html :drakma :cl-uri-templates :split-sequence)
+  :depends-on (:closure-html :drakma :cl-uri-templates :cl-utilities)
   :components ((:file "packages")
 	       (:file "date-time"
 		      :depends-on ("packages"))

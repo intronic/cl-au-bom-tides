@@ -60,6 +60,14 @@
          (b1 (or (parse-integer (or b "0") :junk-allowed t) 0)))
     (+ a1 (/ b1 (expt 10 (length b))))))
 
+(defun trim-whitespace (s)
+  (string-trim '(#\Space #\Tab #\Newline #\NO-BREAK_SPACE) s))
+
+(defun trim-whitespace-to-null (s)
+  (let ((trim (trim-whitespace s)))
+    (if (plusp (length trim))
+	trim)))
+
 (defun rec-find-if (predicate tree)
   (if (null tree)
       nil
@@ -125,6 +133,19 @@
   "Get the table tbody from the table"
   (cddr (third table)))
 
+(defun tide-table-days (table)
+  "Get the table data rows from the table"
+  (mapcar #'(lambda (x)
+	      (let ((node (third (third x))))
+		(parse-integer
+		 (trim-whitespace (if (node-equal-p :img node)
+				      (fourth (third x))
+				      node))
+		 :start 4 :junk-allowed t)))
+	  (cddr (first (tide-table-tbody table)))))
+
+;(mapcar (compose #'third #'third) (cddr (first (tide-table-tbody (find-tide-table *p*)))))
+
 (defun tide-table-data (table)
   "Get the table data rows from the table"
   (cddr (tide-table-tbody table)))
@@ -148,14 +169,6 @@
 
 (defun tide-time (col)
   (trim-whitespace-to-null (third (first col))))
-
-(defun trim-whitespace (s)
-  (string-trim '(#\Space #\Tab #\Newline #\NO-BREAK_SPACE) s))
-
-(defun trim-whitespace-to-null (s)
-  (let ((trim (trim-whitespace s)))
-    (if (plusp (length trim))
-	trim)))
 
 (defun hhmm->mm (time)
   (parse-integer time :start 2 :end 4))
@@ -206,19 +219,23 @@
 			 (parse-acc (cddr cols) new-year new-month (cdr days) day))))))
     (parse-acc cols year month days (first days))))
 
-(let ((year 2010) (month 1) (days '(31 1 2 3 4 5 6)))
-  (defun parse-rows (rows)
-    (remove-if (complement #'first)
+(defun parse-table (table year month day)
+  (let ((days (tide-table-days table)))
+    (assert (eql day (first days)))
+    (labels ((parse-rows (rows)
 	       (if (null rows)
 		   nil
 		   (append (parse-columns year month days 
 					  (row-columns (car rows)))
-			   (parse-rows (cdr rows)))))))
+			   (parse-rows (cdr rows))))))
+      (sort (remove-if (complement #'first)
+		       (parse-rows (tide-table-data table)))
+	    #'< :key #'first))))
 
-(defun test (path year month day)
-  (declare (ignore year month day))
-  (let ((table (find-tide-table (parse path (make-lhtml-builder)))))
-    (mapcar #'parse-row table)))
+;; (defun test (path year month day)
+;;   (declare (ignore year month day))
+;;   (let ((table (find-tide-table (parse path (make-lhtml-builder)))))
+;;     (mapcar #'parse-row table)))
  
 ;; (defun remove-blanks (columns)
 ;;   (do ((col (
