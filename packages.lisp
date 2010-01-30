@@ -9,5 +9,7 @@
 	:local-time
 	:iterate)
   (:import-from :cl-utilities :split-sequence)
+  (:import-from :alexandria :curry)
+  (:import-from :anaphora :awhen :it)
   (:documentation
    "Genospatial data and algorithms."))

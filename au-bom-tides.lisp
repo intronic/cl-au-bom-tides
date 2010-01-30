@@ -37,6 +37,39 @@
     ("qld_59840" "Waddy Point" "(Fraser Island)") 
     ("qld_63620" "Weipa" "(Humbug Point)")))
 
+;;; text utililies
+(defun parse-decimal (str)
+  (let* ((parts (split-sequence #\. str))
+         (a (car parts))
+         (b (cadr parts))
+         (a1 (parse-integer a))
+         (b1 (or (parse-integer (or b "0") :junk-allowed t) 0)))
+    (+ a1 (/ b1 (expt 10 (length b))))))
+
+(defun parse-decimal-or-null (string)
+  (if string (parse-decimal string)))
+
+(defun trim-whitespace (s)
+  (string-trim '(#\Space #\Tab #\Newline #\NO-BREAK_SPACE) s))
+
+(defun trim-whitespace-to-null (s)
+  (let ((trim (trim-whitespace s)))
+    (if (plusp (length trim))
+	trim)))
+
+;;; date functions
+(defun short-month-name (month)
+  (aref +short-month-names+ month))
+
+(defun first-day (year)
+  "First day of the year."
+  (encode-timestamp 0 0 0 0 1 1 year))
+
+(defun add-days (date days)
+  "Add days to date."
+  (adjust-timestamp date (offset :day days)))
+
+;;; port utilities
 (defun standard-port (name)
   (rassoc name *standard-ports* 
 	  :test (lambda (name port) 
@@ -52,25 +85,7 @@
     ((string= "nsw" (first port) :end2 3)
      "New+South+Wales")))
 
-(defun short-month-name (month)
-  (aref +short-month-names+ month))
-
-(defun parse-decimal (str)
-  (let* ((parts (split-sequence #\. str))
-         (a (car parts))
-         (b (cadr parts))
-         (a1 (parse-integer a))
-         (b1 (or (parse-integer (or b "0") :junk-allowed t) 0)))
-    (+ a1 (/ b1 (expt 10 (length b))))))
-
-(defun trim-whitespace (s)
-  (string-trim '(#\Space #\Tab #\Newline #\NO-BREAK_SPACE) s))
-
-(defun trim-whitespace-to-null (s)
-  (let ((trim (trim-whitespace s)))
-    (if (plusp (length trim))
-	trim)))
-
+;;; Recursive find 
 (defun rec-find-if (predicate tree)
   (if (null tree)
       nil
@@ -79,8 +94,27 @@
 	      (or (rec-find-if predicate (first tree))
 		  (rec-find-if predicate (rest tree)))))))
 
+;;; HTTP
+(defun get-uri (uri)
+  "Fetch page from uri."
+  (http-request uri))
+
+;;; parse page to lhtml
+(defun parse-html-to-lhtml (s)
+  "Parse html page to lhtml."
+  (awhen (parse s (make-lhtml-builder))
+    (assert (not (page-error-p it)))
+    it))
+
+;;; lhtml node utilities
 (defun node-equal-p (x node &key (test #'eq))
   (if (and (consp node) (funcall test (car node) x))
+      node))
+
+(defun node-text-equal-p (x node &key (test #'string=))
+  (if (and (consp node) 
+	   (stringp (third node))
+	   (funcall test (third node) x))
       node))
 
 (defun find-node (type tree)
@@ -88,6 +122,26 @@
       (or (node-equal-p type tree)
 	  (find-node type (first tree))
 	  (find-node type (rest tree)))))
+
+(defun row-columns (row)
+  (cddr row))
+
+;;; BOM page scanning funtions
+(defun make-bom-uri (port-name year month day)
+  "Get BOM Website URI for tides for the port-name for 7 days from the year, month, and day. Port name is the name of the port, for example Brisbane Bar, Yamba, Urangan (see http://www.bom.gov.au/oceanography/tides/MAPS/qld.shtml). Year is a four-digit integer. Month is an integer from 1 to 12. Day is an integer from 1 to 31."  
+  (let* ((port (standard-port port-name))
+	 (port-code (first port))
+	 (port-state (standard-port-state port))
+	 (month-name (short-month-name month))
+	 (day-padded (format nil "~2,'0d" day)))
+    (expand-uri-template "http://www.bom.gov.au/cgi-bin/oceanography/tides/tide_predications.cgi?location={port-code}&Submit.x=63&Submit.y=4&tide_hiddenField={port-state}&years={year}&months={month-name}&dates={day-padded}")))
+
+(defun page-error-p (page)
+  (rec-find-if #'(lambda (x) 
+		   (if (and (node-equal-p :div x) ; error div
+			    (node-text-equal-p "This product is not yet available." x))
+		       x))
+	       page))
 
 (defun find-tide-location (page)
   (rec-find-if #'(lambda (x) 
@@ -139,26 +193,18 @@
 		 :start 4 :junk-allowed t)))
 	  (cddr (first (tide-table-tbody table)))))
 
-;(mapcar (compose #'third #'third) (cddr (first (tide-table-tbody (find-tide-table *p*)))))
-
 (defun tide-table-data (table)
   "Get the table data rows from the table"
   (cddr (tide-table-tbody table)))
-
-(defun row-columns (row)
-  (cddr row))
-
-(defun parse-number-or-null (string)
-  (if string (parse-decimal string)))
 
 (defun high-or-low (col)
   (let ((color (second (first (second (third (second col))))))
 	(height (third (third (second col)))))
     (cond 
-      ((string= color "red") (values (parse-number-or-null 
+      ((string= color "red") (values (parse-decimal-or-null 
 				      (trim-whitespace-to-null (third height))) 
 				     :low))
-      ((string= color "blue") (values (parse-number-or-null
+      ((string= color "blue") (values (parse-decimal-or-null
 				       (trim-whitespace-to-null height))
 				      :high)))))
 
@@ -176,24 +222,6 @@
   (let ((loc (find-tide-location page))
 	(tab (find-tide-table-and-validate-day page day)))
     `(:div nil ,loc ,tab)))
-
-
-(defun parse-lhtml (s)
-  "Fetch page from uri and parse to lhtml."
-  (parse s (make-lhtml-builder)))
-
-(defun parse-from-uri (uri)
-  "Fetch page from uri and parse to lhtml."
-  (parse-lhtml (http-request uri)))
-
-(defun make-bom-uri (port-name year month day)
-  "Get BOM Website URI for tides for the port-name for 7 days from the year, month, and day. Port name is the name of the port, for example Brisbane Bar, Yamba, Urangan (see http://www.bom.gov.au/oceanography/tides/MAPS/qld.shtml). Year is a four-digit integer. Month is an integer from 1 to 12. Day is an integer from 1 to 31."  
-  (let* ((port (standard-port port-name))
-	 (port-code (first port))
-	 (port-state (standard-port-state port))
-	 (month-name (short-month-name month))
-	 (day-padded (format nil "~2,'0d" day)))
-    (expand-uri-template "http://www.bom.gov.au/cgi-bin/oceanography/tides/tide_predications.cgi?location={port-code}&Submit.x=63&Submit.y=4&tide_hiddenField={port-state}&years={year}&months={month-name}&dates={day-padded}")))
 
 (defun parse-columns (year month days cols)
   (labels ((parse-column (col year month day)
@@ -235,36 +263,49 @@
 		       (parse-rows (tide-table-data table)))
 	    #'< :key #'first))))
 
+;;;
+(defun parse-tide-table (page year month day)
+  "Parse table from html."
+  (parse-table 
+   (find-tide-table-and-validate-day 
+    (parse-html-to-lhtml page) day)
+   year month day))
+
+(defun parse-tide-table-from-uri (port-name year month day)
+  "Get tide table data for the location for 7 days from the year, 
+month, and day."
+  (parse-tide-table (get-uri (make-bom-uri port-name year month day)) 
+		    year month day))
+
+(defun format-tide-table (page year month day destination)
+  "Read html page of tide table data (#p path, or string) for the year, 
+month, and day, and write it to the stream."
+  (format destination "~s~%" (parse-tide-table page year month day)))
+
+(defun format-tide-table-from-uri (port-name year month day destination)
+  "Get tide table data for the location for 7 days from the year, 
+month, and day, and write it to the destination."
+  (format destination "~s~%" 
+	  (tide-table-from-uri port-name year month day)))
+
+(defun tides-for-year (port-name year destination &key (sleep 3) (days 365))
+  "Request tides from BOM website, week-at-a-time for 365 days, 
+starting at the beginning of Jan 1 of year. Format results to destination. 
+Sleep for sleep seconds between requests."
+  (format destination "~s~%"
+;	  (remove-if (complement 
+	  (iter
+	    (repeat (ceiling days 7))
+	    (for date initially (first-day year) then (add-days date 7))
+	    (for month = (timestamp-month date))
+	    (for day = (timestamp-day date))
+	    (sleep sleep)
+	    (appending (parse-tide-table-from-uri port-name year month day)))))
+;;; reqd?
+
 (defun html-tide-table-to-stream (port-name year month day stream)
   "Get html table for tides for the location for 7 days from the year, month, and day, and write it to the stream."
   (serialize-lhtml 
    (munge-tide-data 
     (parse-from-uri (make-bom-uri port-name year month day)) day)
    (make-character-stream-sink stream)))
-
-(defun format-tide-table (port-name year month day destination)
-  "Get tide table data for the location for 7 days from the year, month, and day, and write it to the stream."
-  (format destination "~s~%"
-	  (parse-table 
-	   (find-tide-table-and-validate-day 
-	    (parse-from-uri (make-bom-uri port-name year month day)) day)
-	   year month day)))
-
-(defun weeks-in-year (year)
-  (let ((yr (encode-timestamp 0 0 0 0 1 1 year)))
-    (iter
-     (for i from 0 below 365 by 7)
-     (collect (adjust-timestamp yr (offset :day i))))))
-
-(defun tides-for-year (port-name year destination &key (sleep 3))
-  (format destination "~s~%"
-	  (iter
-	    (for date in (weeks-in-year year))
-	    (for month = (timestamp-month date))
-	    (for day = (timestamp-day date))
-	    (sleep sleep)
-	    (appending (parse-table 
-		      (find-tide-table-and-validate-day 
-		       (parse-from-uri (make-bom-uri port-name year month day)) 
-		       day)
-		      year month day)))))

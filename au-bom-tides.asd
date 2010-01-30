@@ -14,7 +14,8 @@
   :author ""
   :licence ""
   :description "Tides from bom.gov.au"
-  :depends-on (:closure-html :drakma :cl-uri-templates :local-time :iterate :cl-utilities)
+  :depends-on (:closure-html :drakma :cl-uri-templates :local-time :iterate 
+			     :cl-utilities :alexandria :anaphora)
   :components ((:file "packages")
 	       (:file "au-bom-tides"
 		      :depends-on ("packages"))))
