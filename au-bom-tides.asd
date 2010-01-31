@@ -19,8 +19,10 @@
   :components ((:file "packages")
 	       (:file "au-bom-tides"
 		      :depends-on ("packages"))
-	       (:file "rules"
+	       (:file "tide"
 		      :depends-on ("au-bom-tides"))))
+	       (:file "rules"
+		      :depends-on ("tide"))))
 	       ;; (:module test
 	       ;; 		:components ((:file "test"))
 	       ;; 		:depends-on ("au-bom-tides"))))
