@@ -8,7 +8,7 @@
 	:cl-uri-templates
 	:local-time
 	:iterate)
-  (:import-from :cl-utilities :split-sequence)
+  (:import-from :cl-utilities :split-sequence :compose)
   (:import-from :alexandria :curry)
   (:import-from :anaphora :awhen :it)
   (:documentation

@@ -251,7 +251,6 @@
 
 (defun parse-table (table year month day)
   (let ((days (tide-table-days table)))
-    (format t "day ~s first ~s~%" day (first days))
     (assert (eql day (first days)))
     (labels ((parse-rows (rows)
 	       (if (null rows)
@@ -277,6 +276,21 @@ month, and day."
   (parse-tide-table (get-uri (make-bom-uri port-name year month day)) 
 		    year month day))
 
+(defun tides-for-year (port-name year &key (sleep 3) (days 365))
+  "Request tides from BOM website, week-at-a-time for 365 days, 
+starting at the beginning of Jan 1 of year. Format results to destination. 
+Sleep for sleep seconds between requests."
+  (remove-if (curry #'timestamp<= (first-day (1+ year)))
+	     (iter
+	       (repeat (ceiling days 7))
+	       (for date initially (first-day year) then (add-days date 7))
+	       (sleep sleep)
+	       (appending 
+		(parse-tide-table-from-uri port-name year 
+					   (timestamp-month date)
+					   (timestamp-day date))))
+	     :key (compose #'universal-to-timestamp #'first)))
+
 (defun format-tide-table (page year month day destination)
   "Read html page of tide table data (#p path, or string) for the year, 
 month, and day, and write it to the stream."
@@ -286,26 +300,20 @@ month, and day, and write it to the stream."
   "Get tide table data for the location for 7 days from the year, 
 month, and day, and write it to the destination."
   (format destination "~s~%" 
-	  (tide-table-from-uri port-name year month day)))
+	  (parse-tide-table-from-uri port-name year month day)))
 
-(defun tides-for-year (port-name year destination &key (sleep 3) (days 365))
+(defun format-tides-for-year (port-name year destination &key (sleep 3) (days 365))
   "Request tides from BOM website, week-at-a-time for 365 days, 
 starting at the beginning of Jan 1 of year. Format results to destination. 
 Sleep for sleep seconds between requests."
-  (format destination "~s~%"
-;	  (remove-if (complement 
-	  (iter
-	    (repeat (ceiling days 7))
-	    (for date initially (first-day year) then (add-days date 7))
-	    (for month = (timestamp-month date))
-	    (for day = (timestamp-day date))
-	    (sleep sleep)
-	    (appending (parse-tide-table-from-uri port-name year month day)))))
+  (format destination "~s~%" (tides-for-year port-name year :sleep sleep :days days)))
+
 ;;; reqd?
 
-(defun html-tide-table-to-stream (port-name year month day stream)
-  "Get html table for tides for the location for 7 days from the year, month, and day, and write it to the stream."
-  (serialize-lhtml 
-   (munge-tide-data 
-    (parse-from-uri (make-bom-uri port-name year month day)) day)
-   (make-character-stream-sink stream)))
+;; (defun html-tide-table-to-stream (port-name year month day stream)
+;;   "Get html table for tides for the location for 7 days from the year, month, and day, and write it to the stream."
+;;   (serialize-lhtml 
+;;    (munge-tide-data 
+;;     (parse-from-uri (make-bom-uri port-name year month day)) day)
+;;    (make-character-stream-sink stream)))
+
