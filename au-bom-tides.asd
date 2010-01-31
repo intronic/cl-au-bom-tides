@@ -18,7 +18,9 @@
 			     :cl-utilities :alexandria :anaphora)
   :components ((:file "packages")
 	       (:file "au-bom-tides"
-		      :depends-on ("packages"))))
+		      :depends-on ("packages"))
+	       (:file "rules"
+		      :depends-on ("au-bom-tides"))))
 	       ;; (:module test
 	       ;; 		:components ((:file "test"))
 	       ;; 		:depends-on ("au-bom-tides"))))

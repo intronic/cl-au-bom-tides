@@ -175,14 +175,14 @@
 
 (defun find-tide-table-and-validate-day (page day)
   (let ((table (find-tide-table page)))
-    (assert (eql (first (tide-table-days table)) day))
+    (assert (eql (first (find-tide-table-days table)) day))
     table))
 
-(defun tide-table-tbody (table)
+(defun find-tide-table-tbody (table)
   "Get the table tbody from the table"
   (cddr (third table)))
 
-(defun tide-table-days (table)
+(defun find-tide-table-days (table)
   "Get the table data rows from the table"
   (mapcar #'(lambda (x)
 	      (let ((node (third (third x))))
@@ -191,11 +191,11 @@
 				      (fourth (third x))
 				      node))
 		 :start 4 :junk-allowed t)))
-	  (cddr (first (tide-table-tbody table)))))
+	  (cddr (first (find-tide-table-tbody table)))))
 
-(defun tide-table-data (table)
+(defun find-tide-table-data (table)
   "Get the table data rows from the table"
-  (cddr (tide-table-tbody table)))
+  (cddr (find-tide-table-tbody table)))
 
 (defun high-or-low (col)
   (let ((color (second (first (second (third (second col))))))
@@ -208,7 +208,7 @@
 				       (trim-whitespace-to-null height))
 				      :high)))))
 
-(defun tide-time (col)
+(defun find-tide-time (col)
   (trim-whitespace-to-null (third (first col))))
 
 (defun hhmm->mm (time)
@@ -225,7 +225,7 @@
 
 (defun parse-columns (year month days cols)
   (labels ((parse-column (col year month day)
-	     (let* ((time-string (tide-time col))
+	     (let* ((time-string (find-tide-time col))
 		    (time (if time-string
 			      (encode-timestamp 0 0 
 						(hhmm->mm time-string) 
@@ -250,7 +250,7 @@
     (parse-acc cols year month days (first days))))
 
 (defun parse-table (table year month day)
-  (let ((days (tide-table-days table)))
+  (let ((days (find-tide-table-days table)))
     (assert (eql day (first days)))
     (labels ((parse-rows (rows)
 	       (if (null rows)
@@ -259,7 +259,7 @@
 					  (row-columns (car rows)))
 			   (parse-rows (cdr rows))))))
       (sort (remove-if (complement #'first)
-		       (parse-rows (tide-table-data table)))
+		       (parse-rows (find-tide-table-data table)))
 	    #'< :key #'first))))
 
 ;;;
