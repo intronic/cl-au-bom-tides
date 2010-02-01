@@ -1,29 +1,24 @@
 (in-package :au-bom-tides)
 
-; friday, high tide not between 8pm-10pm, high not in top 5% of tides,
 
-(defun wolf-rock (tide &optional (trip-day "Fri"))
-  ;; friday night high tide, between 10pm-midnight (so we can drive down on the
-  ;; beach that night, and high tide on sat is before noon) and the high tide is
-  ;; not as high as the top 5% of tides.
+(defun wolf-rock (tide &key (high-water 1.9) above-high-water 
+		  (trip-day "Fri") (hour-from 22) (hour-to 23))
+  ;; test that for wolf-rock trip:
+  ;; high tide is lower than high-water (or above if above-high-water is true)
+  ;; on the trip-day between the hours hour-from and hour-to
+
+  ;; optimal trip on friday: (wolf-rock tide)
+
+  ;; sub-optimal due to very high tide:
+  ;; (wolf-rock tide :above-high-water t)
+
+  ;; sub-optimal due to tide high 8pm-10pm Friday night:
+  ;; (wolf-rock tide :hour-from 20 :hour-to 21)
+
   (remove-if #'(lambda (x) (not (and (eq :high (tide-high-low x)) 
 				     (string-equal trip-day (tide-day x))
-				     (<= 22 (tide-hour x) 23)
-				     (< (tide-height x) (tide-max-pctile tide)))))
+				     (<= hour-from (tide-hour x) hour-to)
+				     (funcall (if above-high-water #'>= #'<) 
+					      (tide-height x) high-water))))
 	     tide))
 
-(defun wolf-rock-bad-tide-height (tide &optional (trip-day "Fri"))
-  ;; sub-optimal due to very high tide
-  (remove-if #'(lambda (x) (not (and (eq :high (tide-high-low x)) 
-				     (string-equal trip-day (tide-day x))
-				     (<= 22 (tide-hour x) 23)
-				     (>= (tide-height x) (tide-max-pctile tide)))))
-	     tide))
-
-(defun wolf-rock-bad-time-trip-day (tide &optional (trip-day "Fri"))
-  ;; sub-optimal due to tide high 8pm-10pm Friday night
-  (remove-if #'(lambda (x) (not (and (eq :high (tide-high-low x)) 
-				     (string-equal trip-day (tide-day x))
-				     (<= 20 (tide-hour x) 21)
-				     (< (tide-height x) (tide-max-pctile tide)))))
-	     tide))
