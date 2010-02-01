@@ -225,19 +225,16 @@
 
 (defun parse-columns (year month days cols)
   (labels ((parse-column (col year month day)
-	     (let* ((time-string (find-tide-time col))
-		    (time (if time-string
-			      (encode-timestamp 0 0 
-						(hhmm->mm time-string) 
-						(hhmm->hh time-string) 
-						day month year))))
+	     (let* ((time-string (find-tide-time col)))
 	       (multiple-value-bind (height low-high)
 		   (high-or-low col)
-		 (list (if time (timestamp-to-universal time))
-		       (if time (format-timestring nil time))
-		       (if time (format-timestring nil time :format '(:short-weekday)))
-		       low-high (if height (coerce height 'single-float)) 
-		       height))))
+		 (if time-string 
+		     (make-tide (encode-timestamp 0 0 
+						  (hhmm->mm time-string) 
+						  (hhmm->hh time-string) 
+						  day month year)
+				low-high (coerce height 'single-float))
+		     '()))))
 	   (parse-acc (cols year month days prev-day)
 	     (if (null cols)
 		 nil

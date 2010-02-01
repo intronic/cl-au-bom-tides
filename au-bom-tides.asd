@@ -17,10 +17,10 @@
   :depends-on (:closure-html :drakma :cl-uri-templates :local-time :iterate 
 			     :cl-utilities :alexandria :anaphora)
   :components ((:file "packages")
-	       (:file "au-bom-tides"
-		      :depends-on ("packages"))
 	       (:file "tide"
-		      :depends-on ("au-bom-tides"))))
+		      :depends-on ("packages"))
+	       (:file "au-bom-tides"
+		      :depends-on ("tide"))
 	       (:file "rules"
 		      :depends-on ("tide"))))
 	       ;; (:module test

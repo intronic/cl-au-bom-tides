@@ -1,11 +1,23 @@
 (in-package :au-bom-tides)
 
+;; tide format
+;;((3475574520 :HIGH 1.63 "Fri" "2010-02-19 23:22 (+10:00)")
+;; (3476785620 :LOW 0.23 "Sun" "2010-03-07 23:47 (+10:00)")
+
+(defun make-tide (timestamp high-or-low height)
+  (list (timestamp-to-universal timestamp)
+	high-or-low height 
+	(format-timestring nil timestamp :format '(:short-weekday))
+	(format-timestring nil timestamp :format '(:year #\- (:month 2) #\- (:day 2) 
+					      #\Space (:hour 2) #\: (:min 2)
+					      " (" :gmt-offset #\) ))))
+
 (defun read-tides (path)
   (with-open-file (s path)
     (read s)))
 
 (defun tide-day (tide)
-  (third tide))
+  (fourth tide))
 
 (defun tide-universal-time (tide)
   (first tide))
@@ -14,7 +26,7 @@
   (universal-to-timestamp (tide-universal-time tide)))
 
 (defun tide-high-low (tide)
-  (fourth tide))
+  (second tide))
 
 (defun tide-height (tide)
   (sixth tide))
