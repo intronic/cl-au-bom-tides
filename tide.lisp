@@ -29,7 +29,7 @@
   (second tide))
 
 (defun tide-height (tide)
-  (sixth tide))
+  (third tide))
 
 (defun tide-max (tide)
   (reduce #'max tide :key #'tide-height))
@@ -47,3 +47,20 @@
 (defun tide-max-pctile (tide &key (pct 5/100))
   (tide-height (nth (floor (* pct (/ (length tide) 2)))
 		    (sort (copy-list tide) #'> :key #'tide-height))))
+
+(defun tide-lhtml (tide &optional (col-type :td))
+  `(:tr ,(if (symbolp (tide-high-low tide))
+	     `((:class ,(format nil "~@(~a~)" (symbol-name (tide-high-low tide))))))
+	,@(mapcar 
+	   #'(lambda (col) 
+	       `(,col-type nil 
+			   ,(typecase col
+				      (symbol (format nil "~@(~a~)" (symbol-name col)))
+				      (string col)
+				      (t (format nil "~s" col)))))
+	   (rest tide))))
+
+(defun tides-to-lhtml (tides)
+  `(:table nil 
+	   ,(tide-lhtml '(nil "Tide" "Height" "Day" "Date") :th)
+	   ,@(mapcar #'tide-lhtml tides)))

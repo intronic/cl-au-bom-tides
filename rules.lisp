@@ -22,3 +22,27 @@
 					      (tide-height x) high-water))))
 	     tide))
 
+(defun day-num (time)
+  "Number of the day this year."
+  (- (day-of time) (day-of (timestamp-minimize-part time :month))))
+
+(defun day-num-list (tides)
+  (mapcar (compose #'day-num #'tide-time) tides))
+
+(defun expand-day-num-list (day-list days-to-add)
+  "Add days-to-add days to the day-list."
+  (iter (for d in day-list)
+	(appending 
+	 (iter (for i from d to (+ d days-to-add)) 
+	       (collect i)))))
+
+(defun expand-days (tides filter-fn &optional (days-to-add 2))
+  (let ((day-list (expand-day-num-list 
+		   (day-num-list (funcall filter-fn tides))
+		   days-to-add)))
+    (remove-if #'(lambda (x) (not (member x day-list)))
+	       tides
+	       :key (compose #'day-num #'tide-time))))
+  
+(defun wolf-rock-expanded (tides days-to-add)
+  (expand-days tides #'wolf-rock days-to-add))
