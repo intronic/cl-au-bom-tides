@@ -12,7 +12,21 @@
 					      #\Space (:hour 2) #\: (:min 2)
 					      " (" :gmt-offset #\) ))))
 
-(defun read-tides (path)
+(defun make-path (location year)
+  (parse-namestring
+   (concatenate 'string 
+		"data/"
+		(substitute #\- #\Space (string-downcase (trim-whitespace location)))
+		"-"
+		(if (parse-integer (string year)) (string year))
+		".lisp")))
+	       
+
+(defun read-tides (location year)
+  (with-open-file (s (make-path location year))
+    (read s)))
+
+(defun read-tides-path (path)
   (with-open-file (s path)
     (read s)))
 
