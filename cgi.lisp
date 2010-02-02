@@ -15,11 +15,10 @@
 (defun header (title)
   "Set up the page head"
   (http:http-send-headers)
-  (princ (html:html-header title)))
+  (princ (html:html-header title :stylesheet "/css/bom.css")))
 
-(defun tide-html-row (tide &optional (col-type #'html:td))
-  (html:tr (if (symbolp (tide-high-low tide))
-	       `(("class" . ,(format nil "~@(~a~)" (symbol-name (tide-high-low tide))))))
+(defun tide-html-row (tide &optional class-fn (col-type #'html:td))
+  (html:tr (if class-fn (list (cons "class" (funcall class-fn tide))))
 	   (apply #'concatenate 'string
 		  (mapcar 
 		   #'(lambda (col) 
@@ -30,10 +29,10 @@
 				  (t (format nil "~s" col)))))
 		   (rest tide)))))
 
-(defun tides-to-html (tides)
+(defun tides-to-html (tides &optional class-fn)
   (html:table
-   (tide-html-row '(nil "Tide" "Height" "Day" "Date") #'html:th)
-   (apply #'concatenate 'string (mapcar #'tide-html-row tides))))
+   (tide-html-row '(nil "Tide" "Height" "Day" "Date") nil #'html:th)
+   (apply #'concatenate 'string (mapcar (rcurry #'tide-html-row class-fn) tides))))
 
 (defun buttons ()
   (concatenate 'string 
@@ -48,36 +47,51 @@
 
 (defun form-choose-location ()
   "Prints a selector and the selected results."
-  (html:table
-   (html:tr
-    (html:td "Select location and year: ")
-    (html:td
-     (html:form-self-post
-      (html:p
-       (html:form-select "location"
-			 (list "Brisbane Bar" "Noosa Head")
-			 "Brisbane Bar")
-       (html:form-select "year"
-			 (map-int (curry #'+ (timestamp-year (now))) 2)
-			 (timestamp-year (now)))
-       (html:form-select "trip-start" (coerce +short-day-names+ 'list) "Fri")
-       (html:form-select "trip-days" (map-int #'1+ 5) 2))
-      (buttons))))
-   (html:tr
-    (html:td "you selected: ")
-    (html:td 
-     (let ((location (http:http-query-parameter "location"))
-   	   (year (aif (http:http-query-parameter "year") (parse-integer it)))
-   	   (trip-start (http:http-query-parameter "trip-start"))
-   	   (trip-days (aif (http:http-query-parameter "trip-days") (parse-integer it))))
+  (let ((btn-do-tides (http:http-query-parameter "do-tides"))
+	(btn-do-trip (http:http-query-parameter "do-trip"))
+	(location (http:http-query-parameter "location"))
+	(year (aif (http:http-query-parameter "year") (parse-integer it)))
+	(trip-start (http:http-query-parameter "trip-start"))
+	(trip-days (aif (http:http-query-parameter "trip-days") (parse-integer it))))
+    (html:table
+     (html:tr
+      (html:td "Select location and year: "))
+     (html:tr
+      (html:td
+       (html:form-self-post
+	(html:p
+	 (html:form-select "location"
+			   (list "Brisbane Bar" "Noosa Head")
+			   (or location "Brisbane Bar"))
+	 (html:form-select "year"
+			   (map-int (curry #'+ (timestamp-year (now))) 2)
+			   (or year (timestamp-year (now))))
+	 (html:form-select "trip-start" (coerce +short-day-names+ 'list) 
+			   (or trip-start "Fri"))
+	 (html:form-select "trip-days" (map-int #'1+ 5) 
+			   (or trip-days 2)))
+	(buttons))))
+     (html:tr
+      (html:td (cond 
+		 (btn-do-trip (format nil "Optimal ~s trip dates:" location))
+		 (btn-do-tides (format nil "Tides for ~s:" location))
+		 (t (format nil "(~s) (~s)~%" 
+			    (http:http-query-parameter "do-tides")
+			    (http:http-query-parameter "do-trip"))))))
+     (html:tr
+      (html:td 
        (cond
-   	 ((and (http:http-query-parameter "do-tides") location year)
-   	  (tides-to-html (read-tides location year)))
-   	 ((and (http:http-query-parameter "do-trip") location year)
-   	  (tides-to-html (wolf-rock-expanded (read-tides location year)
-   					     trip-start
-   					     trip-days)))))))))
-                       
+	 ((and btn-do-tides location year)
+	  (tides-to-html (read-tides location year)
+			 (compose #'string #'tide-high-low)))
+	 ((and btn-do-trip location year)
+	  (tides-to-html (wolf-rock-expanded (read-tides location year)
+					     trip-start
+					     trip-days)
+			 #'(lambda (tide)
+			     (concatenate 'string (string (tide-high-low tide))
+					  (if (equal (tide-day tide) trip-start) "-day" "")))))))))))
+  
 #|  To make the sbcl exe core:
 sbcl --core ../sbcl.core-for-slime
 (require :au-bom-tides)

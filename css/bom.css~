@@ -1,0 +1,8 @@
+
+tr.High {
+	background-color: #CC9999; color: black;
+}
+tr.Low {
+	background-color: #9999CC; color: black;
+}
+

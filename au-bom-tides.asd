@@ -15,7 +15,7 @@
   :licence ""
   :description "Tides from bom.gov.au"
   :depends-on (:closure-html :drakma :cl-uri-templates :local-time :iterate 
-			     :cl-utilities :alexandria :anaphora)
+			     :cl-utilities :anaphora) ; :alexandria
   :components ((:file "packages")
 	       (:file "utilities"
 		      :depends-on ("packages"))

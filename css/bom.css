@@ -1,0 +1,25 @@
+
+/*
+http://www.december.com/html/spec/color1.html
+
+khaki(SVG) #F0E68C
+coconut #FFFCCF
+bone(Safe Hex3) #FFFFCC
+*/
+
+tr.HIGH-day {
+	background-color: #F0E68C; color: black;
+}
+tr.HIGH {
+	background-color: #FFFCCF; color: black;
+}
+/* tr.LOW-day { */
+/* 	background-color: #FFFFCC; color: black; */
+/* } */
+/* tr.LOW { */
+/* 	background-color: #fffccf; color: black; */
+/* } */
+/* tr.Low { */
+/* 	background-color: #9999CC; color: black; */
+/* } */
+
