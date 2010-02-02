@@ -29,7 +29,7 @@
 	       		:components ((:file "http")
 				     (:file "html"))
 	       		:depends-on ("rules"))
-	       (:file "cgi" :depends-on (lisp-cgi-utils))))
+	       (:file "cgi" :depends-on ("utilities" lisp-cgi-utils))))
 
 	       ;; (:module test
 	       ;; 		:components ((:file "test"))

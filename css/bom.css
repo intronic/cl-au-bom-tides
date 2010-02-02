@@ -7,19 +7,13 @@ coconut #FFFCCF
 bone(Safe Hex3) #FFFFCC
 */
 
-tr.HIGH-day {
+/* day-trip/day-other */
+tr.day-trip {
 	background-color: #F0E68C; color: black;
 }
+/* NIL */
+
+/* LOW/HIGH tide */
 tr.HIGH {
 	background-color: #FFFCCF; color: black;
 }
-/* tr.LOW-day { */
-/* 	background-color: #FFFFCC; color: black; */
-/* } */
-/* tr.LOW { */
-/* 	background-color: #fffccf; color: black; */
-/* } */
-/* tr.Low { */
-/* 	background-color: #9999CC; color: black; */
-/* } */
-

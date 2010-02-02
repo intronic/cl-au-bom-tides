@@ -2,6 +2,39 @@
 
 ;;;; http://www.bom.gov.au/cgi-bin/oceanography/tides/tide_predications.cgi?location=qld_59980&Submit.x=63&Submit.y=4&tide_hiddenField=Queensland&years=2010&months=Jan&dates=31
 
+; dive-site : port | port+adjustment [rules]
+(defvar *dive-sites*
+  '(("Wolf Rock" "Noosa Head" #'wolf-rock)
+    ("Noosa Head" :same)
+    ("Mooloolaba" :same)
+    ("Brisbane Bar" :same)))
+
+(defun make-dive-site (name)
+  (assoc name *dive-sites* :test #'string=))
+
+(defun dive-site-site (site)
+  (first site))
+
+(defun dive-site-port (site)
+  (let ((port (second site)))
+    (cond
+      ((eq port :same) (dive-site-site site))
+      ((consp port) (if (eq (car port) :same)
+			(dive-site-site site)
+			(car port)))
+      (t port))))
+
+(defun dive-site-port-adjust (site)
+  (let ((port (second site)))
+    (if (consp port)
+	(cdr port))))
+
+(defun dive-site-rules-fn (site)
+  (third site))
+
+(defun list-dive-sites ()
+  (mapcar #'dive-site-site *dive-sites*))
+
 (defvar *standard-ports* 
   '(("nsw_60130" "Yamba")
     ("qld_59300" "Abbot Point") 

@@ -8,10 +8,6 @@
 ;; - plan trip; choose trip start date, trip length (2 nights/3 days)
 ;; -
 
-
-;; wolf-rock-expanded (tides days-to-add)
-;;   (expand-days tides #'wolf-rock days-to-add))
-
 (defun header (title)
   "Set up the page head"
   (http:http-send-headers)
@@ -34,64 +30,70 @@
    (tide-html-row '(nil "Tide" "Height" "Day" "Date") nil #'html:th)
    (apply #'concatenate 'string (mapcar (rcurry #'tide-html-row class-fn) tides))))
 
-(defun buttons ()
-  (concatenate 'string 
-	       (html:input '((type . "reset")
-			     (value . "Reset")))
-	       (html:input '((type . "submit")
-			     (name . "do-tides")
-			     (value . "Tides")))
-	       (html:input '((type . "submit")
-			     (name . "do-trip")
-			     (value . "Best Trip Times")))))
+(defun reset-button ()
+  (html:input '((type . "reset")
+		(value . "Reset"))))
+
+(defun button (name value)
+  (html:input `((type . "submit")
+		(name . ,name)
+		(value . ,value))))
 
 (defun form-choose-location ()
   "Prints a selector and the selected results."
-  (let ((btn-do-tides (http:http-query-parameter "do-tides"))
-	(btn-do-trip (http:http-query-parameter "do-trip"))
-	(location (http:http-query-parameter "location"))
-	(year (aif (http:http-query-parameter "year") (parse-integer it)))
-	(trip-start (http:http-query-parameter "trip-start"))
-	(trip-days (aif (http:http-query-parameter "trip-days") (parse-integer it))))
-    (html:table
-     (html:tr
-      (html:td "Select location and year: "))
-     (html:tr
-      (html:td
+  (let* ((btn-do-tides (http:http-query-parameter "do-tides"))
+	 (btn-do-trip (http:http-query-parameter "do-trip"))
+	 (dive-site (http:http-query-parameter "dive-site"))
+	 (site (make-dive-site dive-site))
+	 (year (aif (http:http-query-parameter "year") (parse-integer it)))
+	 (trip-start (http:http-query-parameter "trip-start"))
+	 (trip-days (aif (http:http-query-parameter "trip-days") (parse-integer it))))
+    (concatenate 
+     'string 
+     (html:div
+      (html:span
        (html:form-self-post
-	(html:p
-	 (html:form-select "location"
-			   (list "Brisbane Bar" "Noosa Head")
-			   (or location "Brisbane Bar"))
+	(html:fieldset 
+	 (html:legend "Dive Sites")
+	 (html:form-select "dive-site"
+			   (list-dive-sites)
+			   (or dive-site (first (list-dive-sites))))
+	 (html:label '((for . "year")) "Year")
 	 (html:form-select "year"
 			   (map-int (curry #'+ (timestamp-year (now))) 2)
 			   (or year (timestamp-year (now))))
-	 (html:form-select "trip-start" (coerce +short-day-names+ 'list) 
-			   (or trip-start "Fri"))
-	 (html:form-select "trip-days" (map-int #'1+ 5) 
-			   (or trip-days 2)))
-	(buttons))))
-     (html:tr
-      (html:td (cond 
-		 (btn-do-trip (format nil "Optimal ~s trip dates:" location))
-		 (btn-do-tides (format nil "Tides for ~s:" location))
-		 (t (format nil "(~s) (~s)~%" 
-			    (http:http-query-parameter "do-tides")
-			    (http:http-query-parameter "do-trip"))))))
-     (html:tr
-      (html:td 
-       (cond
-	 ((and btn-do-tides location year)
-	  (tides-to-html (read-tides location year)
-			 (compose #'string #'tide-high-low)))
-	 ((and btn-do-trip location year)
-	  (tides-to-html (wolf-rock-expanded (read-tides location year)
-					     trip-start
-					     trip-days)
-			 #'(lambda (tide)
-			     (concatenate 'string (string (tide-high-low tide))
-					  (if (equal (tide-day tide) trip-start) "-day" "")))))))))))
-  
+	 (button "do-tides" "Show Tides")
+	 (html:fieldset 
+	  (html:legend "Trips")
+	  (html:label '((for . "trip-start")) "Intended start day")
+	  (html:form-select "trip-start" (coerce +short-day-names+ 'list)
+			    (or trip-start "Fri"))
+	  (html:label '((for . "trip-days")) "Length in days")
+	  (html:form-select "trip-days" (map-int #'1+ 5)
+			    (or trip-days 2))
+	  (button "do-trip" "Show Optimal Trip Dates"))))))
+     (html:div
+      (cond 
+	(btn-do-tides (format nil "Tides for ~a, ~a:" dive-site year))
+	(btn-do-trip (format nil "Optimal dates for ~a day ~a trip to ~a, ~a:" 
+			     trip-days trip-start dive-site year))
+	(t "")))
+     (html:div
+      (cond
+     	((and btn-do-tides site year)
+	 (tides-to-html (read-tides (dive-site-port site) year)
+			(compose #'string #'tide-high-low)))
+     	((and btn-do-trip site year trip-start trip-days)
+     	 (tides-to-html
+	  (wolf-rock-expanded (read-tides (dive-site-port site) year)
+			      trip-start
+			      trip-days)
+	  #'(lambda (tide)
+	      (if (equal (tide-day tide) trip-start) 
+		  "day-trip"
+		  "day-other"))))
+	(t ""))))))
+
 #|  To make the sbcl exe core:
 sbcl --core ../sbcl.core-for-slime
 (require :au-bom-tides)
