@@ -1,0 +1,46 @@
+README for lisp-cgi-utils
+
+     Copyright (C) 2003,2004 Alexander Schreiber
+
+     This library is free software; you can redistribute it and/or
+     modify it under the terms of the GNU Library General Public
+     License as published by the Free Software Foundation;
+     version 2 of the License.
+
+     This library is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+     Library General Public License for more details.
+
+     You should have received a copy of the GNU Library General Public
+     License along with this library; if not, write to the Free
+     Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+
+author: Alexander Schreiber <als@thangorodrim.de>
+
+This is lisp-cgi-utils, a toolkit for writing CGI applications in Common Lisp.
+
+It consists of two packages:
+ - the package HTTP, implemented in the file http.lisp:
+   - the basic CGI interface,
+   - can send the HTTP headers,
+   - can read CGI environment variables,
+   - can parse GET/POST CGI parameters and offer easy access to them
+ - the package HTML:
+   - basic HTML formatting, with support for the most used tags (not yet
+     all, will be completed on demand),
+   - specialized support function for working with HTML forms,
+   - HTTP cookie support
+
+usage:
+  - load the HTTP and HTML packages into your Lisp image simply by
+    (load "http.lisp")
+    (load "html.lisp")
+
+Very simple examples are included in the examples directory.
+
+Notice: When sending cookies, be careful not to put ";" into the cookie
+        value as this confuses Microsofts broken browser called
+        Internet Explorer. This is also true for Mac OS X Safari and
+        Konqueror.
