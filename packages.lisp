@@ -10,6 +10,6 @@
 	:iterate)
   (:import-from :cl-utilities :split-sequence :compose)
   (:import-from :alexandria :curry)
-  (:import-from :anaphora :awhen :it)
+  (:import-from :anaphora :awhen :aif :it)
   (:documentation
    "Genospatial data and algorithms."))

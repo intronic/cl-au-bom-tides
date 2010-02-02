@@ -18,9 +18,8 @@
 		"data/"
 		(substitute #\- #\Space (string-downcase (trim-whitespace location)))
 		"-"
-		(if (parse-integer (string year)) (string year))
+		(if (integerp year) (format nil "~a" year) (error "year ~s must be integer." year))
 		".lisp")))
-	       
 
 (defun read-tides (location year)
   (with-open-file (s (make-path location year))

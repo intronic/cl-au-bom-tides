@@ -35,6 +35,17 @@
    (tide-html-row '(nil "Tide" "Height" "Day" "Date") #'html:th)
    (apply #'concatenate 'string (mapcar #'tide-html-row tides))))
 
+(defun buttons ()
+  (concatenate 'string 
+	       (html:input '((type . "reset")
+			     (value . "Reset")))
+	       (html:input '((type . "submit")
+			     (name . "do-tides")
+			     (value . "Tides")))
+	       (html:input '((type . "submit")
+			     (name . "do-trip")
+			     (value . "Best Trip Times")))))
+
 (defun form-choose-location ()
   "Prints a selector and the selected results."
   (html:table
@@ -48,17 +59,31 @@
 			 "Brisbane Bar")
        (html:form-select "year"
 			 (map-int (curry #'+ (timestamp-year (now))) 2)
-			 (timestamp-year (now))))
-      (html:form-reset-submit))))
+			 (timestamp-year (now)))
+       (html:form-select "trip-start" (coerce +short-day-names+ 'list) "Fri")
+       (html:form-select "trip-days" (map-int #'1+ 5) 2))
+      (buttons))))
    (html:tr
     (html:td "you selected: ")
     (html:td 
-     (if (and (http:http-query-parameter "location")
-	      (http:http-query-parameter "year"))
-	 (tides-to-html (read-tides (http:http-query-parameter "location") 
-				    (http:http-query-parameter "year"))))))))
+     (let ((location (http:http-query-parameter "location"))
+   	   (year (aif (http:http-query-parameter "year") (parse-integer it)))
+   	   (trip-start (http:http-query-parameter "trip-start"))
+   	   (trip-days (aif (http:http-query-parameter "trip-days") (parse-integer it))))
+       (cond
+   	 ((and (http:http-query-parameter "do-tides") location year)
+   	  (tides-to-html (read-tides location year)))
+   	 ((and (http:http-query-parameter "do-trip") location year)
+   	  (tides-to-html (wolf-rock-expanded (read-tides location year)
+   					     trip-start
+   					     trip-days)))))))))
                        
-               
+#|  To make the sbcl exe core:
+sbcl --core ../sbcl.core-for-slime
+(require :au-bom-tides)
+(save-lisp-and-die "sbcl.core.cgi" :toplevel #'au-bom-tides::cgi-handler :executable t)
+|#
+
 (defun cgi-handler ()
   (http:http-init)
   

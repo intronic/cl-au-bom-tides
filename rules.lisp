@@ -44,5 +44,6 @@
 	       tides
 	       :key (compose #'day-num #'tide-time))))
   
-(defun wolf-rock-expanded (tides days-to-add)
-  (expand-days tides #'wolf-rock days-to-add))
+(defun wolf-rock-expanded (tides trip-day days-to-add)
+  (expand-days tides #'(lambda (tides) (wolf-rock tides :trip-day trip-day))
+	       days-to-add))
