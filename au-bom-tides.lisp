@@ -3,11 +3,16 @@
 ;;;; http://www.bom.gov.au/cgi-bin/oceanography/tides/tide_predications.cgi?location=qld_59980&Submit.x=63&Submit.y=4&tide_hiddenField=Queensland&years=2010&months=Jan&dates=31
 
 ; dive-site : port | port+adjustment [rules]
-(defvar *dive-sites*
-  '(("Wolf Rock" "Noosa Head" #'wolf-rock)
-    ("Noosa Head" :same)
-    ("Mooloolaba" :same)
-    ("Brisbane Bar" :same)))
+(defparameter *dive-sites*
+  '(("Wolf Rock" "Noosa Head" 
+     (#'wolf-rock 
+      "The best trip dates - high tide between 10pm-midnight the day of the trip (so about 10:30AM-12:30 the next morning"))
+    ("Bundaberg" :same 
+     (#'bundaberg 
+      "The best dates - high tide in the morning after the trip starts (9am-midday)."))
+    ("Noosa Head" :same (#'day-filter "Shows all tides for trip days."))
+    ("Mooloolaba" :same (#'day-filter "Shows all tides for trip days."))
+    ("Brisbane Bar" :same (#'day-filter "Shows all tides for trip days."))))
 
 (defun make-dive-site (name)
   (assoc name *dive-sites* :test #'string=))
@@ -34,6 +39,9 @@
 
 (defun list-dive-sites ()
   (mapcar #'dive-site-site *dive-sites*))
+
+(defun list-dive-sites-with-rules ()
+  (mapcar #'dive-site-site (remove-if (complement #'dive-site-rules-fn) *dive-sites*)))
 
 (defvar *standard-ports* 
   '(("nsw_60130" "Yamba")
@@ -267,7 +275,7 @@ month, and day."
 
 (defun tides-for-year (port-name year &key (sleep 3) (days 365))
   "Request tides from BOM website, week-at-a-time for 365 days, 
-starting at the beginning of Jan 1 of year. Format results to destination. 
+starting at the beginning of Jan 1 of year. 
 Sleep for sleep seconds between requests."
   (remove-if (curry #'timestamp<= (first-day (1+ year)))
 	     (iter
@@ -280,6 +288,14 @@ Sleep for sleep seconds between requests."
 					   (timestamp-day date))))
 	     :key (compose #'universal-to-timestamp #'first)))
 
+(defun write-tides-for-year (port-name year &key (sleep 3) (days 365))
+  "Request tides from BOM website, week-at-a-time for 365 days, 
+starting at the beginning of Jan 1 of year.
+Write tides to file based on port-name and year.
+Sleep for sleep seconds between requests."
+  (write-tides (tides-for-year port-name year :sleep sleep :days days) port-name year))
+
+;;;
 (defun format-tide-table (page year month day destination)
   "Read html page of tide table data (#p path, or string) for the year, 
 month, and day, and write it to the stream."
@@ -291,11 +307,6 @@ month, and day, and write it to the destination."
   (format destination "~s~%" 
 	  (parse-tide-table-from-uri port-name year month day)))
 
-(defun format-tides-for-year (port-name year destination &key (sleep 3) (days 365))
-  "Request tides from BOM website, week-at-a-time for 365 days, 
-starting at the beginning of Jan 1 of year. Format results to destination. 
-Sleep for sleep seconds between requests."
-  (format destination "~s~%" (tides-for-year port-name year :sleep sleep :days days)))
 
 ;;; reqd?
 

@@ -32,6 +32,11 @@
   "Add days to date."
   (adjust-timestamp date (offset :day days)))
 
+(defun next-short-day (short-day)
+  (aref +short-day-names+ 
+	(mod (1+ (position-if (curry #'string-equal short-day) 
+			      +short-day-names+ )) 7)))
+
 ;;; Recursive find 
 (defun rec-find-if (predicate tree)
   (if (null tree)
