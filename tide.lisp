@@ -25,9 +25,11 @@
   (with-open-file (s (make-path location year))
     (read s)))
 
-(defun read-tides-path (path)
-  (with-open-file (s path)
-    (read s)))
+(defun write-tides (tides port-name year)
+  "Write tides to file based on port-name and year."
+  (with-open-file (s (make-path port-name year) 
+		     :direction :output :if-exists :supersede)
+    (format s "~s~%" tides)))
 
 (defun tide-day (tide)
   (fourth tide))
